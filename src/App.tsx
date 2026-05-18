@@ -29,6 +29,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { ThemeToggle } from '@/src/components/ThemeToggle';
+import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Toaster } from '@/components/ui/sonner';
@@ -143,6 +144,27 @@ export default function App() {
   const [messages, setMessages] = React.useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [chatInput, setChatInput] = React.useState('');
   const [isChatLoading, setIsChatLoading] = React.useState(false);
+
+  // Lógica de auto-conexão via QR Code
+  React.useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'connect') {
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const deviceType = isMobile ? 'mobile' : 'desktop';
+      let deviceName = isMobile ? 'Smartphone Sincronizado' : 'Computador Sincronizado';
+      
+      if (/iPhone/i.test(navigator.userAgent)) deviceName = 'iPhone Sincronizado';
+      else if (/Android/i.test(navigator.userAgent)) deviceName = 'Android Sincronizado';
+
+      connectDevice(deviceName, deviceType).then(() => {
+        toast.success('Dispositivo conectado com sucesso via QR Code!');
+        logActivity('device_connect', `Dispositivo ${deviceName} sincronizado via QR Code.`);
+        // Limpa a URL para evitar re-conexões no refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+    }
+  }, [user, connectDevice, logActivity]);
 
   // Garante que a splash screen fique visível por no mínimo 10 segundos
   React.useEffect(() => {
@@ -782,9 +804,9 @@ export default function App() {
               <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-blue-500 rounded-bl" />
               <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-blue-500 rounded-br" />
               
-              {/* QR Code mock com linhas animadas */}
-              <div className="relative w-36 h-36 bg-foreground/5 rounded-lg border border-border flex items-center justify-center overflow-hidden">
-                <QrCode className="h-28 w-28 text-foreground/80 opacity-60" />
+              {/* QR Code Real com linhas animadas */}
+              <div className="relative w-36 h-36 bg-white rounded-lg border border-border flex items-center justify-center overflow-hidden p-2">
+                <QRCodeSVG value={`${window.location.origin}/?action=connect`} size={128} />
                 <motion.div 
                   animate={{ top: ['0%', '100%', '0%'] }}
                   transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
