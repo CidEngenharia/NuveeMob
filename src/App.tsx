@@ -152,14 +152,30 @@ export default function App() {
     if (params.get('action') === 'connect') {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const deviceType = isMobile ? 'mobile' : 'desktop';
-      let deviceName = isMobile ? 'Smartphone Sincronizado' : 'Computador Sincronizado';
       
-      if (/iPhone/i.test(navigator.userAgent)) deviceName = 'iPhone Sincronizado';
-      else if (/Android/i.test(navigator.userAgent)) deviceName = 'Android Sincronizado';
+      let defaultName = isMobile ? 'Smartphone' : 'Computador';
+      
+      const androidMatch = navigator.userAgent.match(/Android\s[0-9\.]+;\s([^;]+)(?:\sBuild|\))/);
+      if (androidMatch && androidMatch[1]) {
+        defaultName = androidMatch[1].trim();
+      } else if (/iPhone/i.test(navigator.userAgent)) {
+        defaultName = 'iPhone';
+      } else if (/iPad/i.test(navigator.userAgent)) {
+        defaultName = 'iPad';
+      } else if (/Android/i.test(navigator.userAgent)) {
+        defaultName = 'Android';
+      } else if (/Windows/i.test(navigator.userAgent)) {
+        defaultName = 'PC Windows';
+      } else if (/Mac OS/i.test(navigator.userAgent)) {
+        defaultName = 'Mac';
+      }
 
-      connectDevice(deviceName, deviceType).then(() => {
-        toast.success('Dispositivo conectado com sucesso via QR Code!');
-        logActivity('device_connect', `Dispositivo ${deviceName} sincronizado via QR Code.`);
+      // Permite que o usuário confirme ou altere o nome do dispositivo
+      const finalName = window.prompt('Confirme ou digite o nome exato deste dispositivo para sincronizar:', defaultName) || defaultName;
+
+      connectDevice(finalName, deviceType).then(() => {
+        toast.success(`Dispositivo ${finalName} conectado com sucesso!`);
+        logActivity('device_connect', `Dispositivo ${finalName} sincronizado via QR Code.`);
         // Limpa a URL para evitar re-conexões no refresh
         window.history.replaceState({}, document.title, window.location.pathname);
       });

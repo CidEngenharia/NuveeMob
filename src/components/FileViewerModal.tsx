@@ -43,6 +43,12 @@ export function FileViewerModal({ file, isOpen, onClose }: FileViewerModalProps)
     }
   };
 
+  const [imageError, setImageError] = React.useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+  }, [file]);
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-4xl bg-background/95 backdrop-blur-xl border border-white/10 rounded-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
@@ -67,10 +73,11 @@ export function FileViewerModal({ file, isOpen, onClose }: FileViewerModalProps)
         </DialogHeader>
 
         <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-black/40 min-h-[50vh]">
-          {isImage ? (
+          {isImage && !imageError ? (
             <img 
               src={file.url} 
               alt={file.name} 
+              onError={() => setImageError(true)}
               className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
             />
           ) : isPdf ? (
