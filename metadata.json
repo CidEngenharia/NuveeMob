@@ -1,0 +1,12 @@
+{
+  "name": "NuveeMob",
+  "description": "Premium mobile-first cloud storage with intelligent AI search, OCR, and multi-device synchronization.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
