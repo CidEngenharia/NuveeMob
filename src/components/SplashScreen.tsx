@@ -111,7 +111,7 @@ export function SplashScreen() {
       <div 
         style={{ 
           position: 'absolute', 
-          top: isDesktop ? 'calc(50% - 220px)' : '36px', 
+          top: isDesktop ? 'calc(50% - 262px)' : '24px', 
           left: '50%', 
           transform: 'translateX(-50%)', 
           zIndex: 50,
@@ -119,7 +119,7 @@ export function SplashScreen() {
         }}
       >
         <img 
-          src="/nuvem_mob.png" 
+          src="/nuvem_mob.png?v=2" 
           alt="NuveeMob Logo" 
           style={{ 
             height: 48, 
