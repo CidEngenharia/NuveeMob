@@ -87,19 +87,34 @@ export function FileViewerModal({ file, isOpen, onClose }: FileViewerModalProps)
               title={file.name}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="flex flex-col items-center justify-center text-center space-y-6">
               <div className="p-6 bg-accent/50 rounded-full border border-white/5">
-                <FileText className="h-16 w-16 text-muted-foreground" />
+                <FileText className="h-16 w-16 text-muted-foreground animate-pulse" />
               </div>
               <div>
                 <h3 className="text-lg font-medium text-foreground">Visualização não suportada</h3>
                 <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                  Este tipo de arquivo não pode ser visualizado diretamente no aplicativo. Por favor, baixe o arquivo ou abra externamente.
+                  Este tipo de arquivo não pode ser visualizado diretamente no aplicativo. Utilize os botões abaixo para visualizar externamente ou baixar o arquivo.
                 </p>
               </div>
-              <Button variant="outline" onClick={handleDownload} className="gap-2 mt-4 border-white/10 text-foreground hover:bg-white/5">
-                <ExternalLink className="h-4 w-4" /> Abrir Externamente
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                {file.url && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.open(file.url, '_blank')} 
+                    className="gap-2 border-white/10 text-foreground hover:bg-white/5 rounded-full px-6"
+                  >
+                    <ExternalLink className="h-4 w-4 text-blue-400" /> Visualizar Arquivo
+                  </Button>
+                )}
+                <Button 
+                  variant="default" 
+                  onClick={handleDownload} 
+                  className="gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 shadow-lg shadow-blue-500/20"
+                >
+                  <Download className="h-4 w-4" /> Baixar
+                </Button>
+              </div>
             </div>
           )}
         </div>

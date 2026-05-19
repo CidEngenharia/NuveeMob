@@ -133,10 +133,24 @@ export function useFiles(parentId: string | null = null, isDemo: boolean = false
         query = query.is('parentId', null);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
 
       if (error) throw error;
       
+      // Criar pastas reais padrão (Documentos, Downloads, Desktop) se a raiz estiver vazia
+      if (!parentId && (!data || data.length === 0)) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('files').insert([
+            { name: 'Documentos', type: 'folder', userId: user.id },
+            { name: 'Downloads', type: 'folder', userId: user.id },
+            { name: 'Desktop', type: 'folder', userId: user.id }
+          ]);
+          const { data: newData } = await query;
+          if (newData) data = newData;
+        }
+      }
+
       // Adaptar snake_case do Supabase para camelCase do TypeScript
       const camelCaseFiles = (data || []).map((f: any) => ({
         id: f.id,
@@ -415,6 +429,39 @@ export function useFiles(parentId: string | null = null, isDemo: boolean = false
     }
   }, [isDemo, getMockFiles, saveMockFiles, fetchFiles]);
 
+  const moveFile = useCallback(async (file: FileNode, newParentId: string | null): Promise<boolean> => {
+    if (isDemo) {
+      const allMocks = getMockFiles();
+      const index = allMocks.findIndex(f => f.id === file.id);
+      if (index !== -1) {
+        allMocks[index].parentId = newParentId;
+        saveMockFiles(allMocks);
+        fetchFiles();
+        toast.success(`"${file.name}" movido com sucesso!`);
+        return true;
+      }
+      return false;
+    }
+
+    try {
+      const moveToast = toast.loading('Movendo arquivo...');
+      const { error } = await supabase
+        .from('files')
+        .update({ parentId: newParentId })
+        .eq('id', file.id);
+
+      if (error) throw error;
+      
+      toast.success(`"${file.name}" movido com sucesso!`, { id: moveToast });
+      fetchFiles();
+      return true;
+    } catch (error: any) {
+      console.error('Error moving file:', error);
+      toast.error('Erro ao mover arquivo.');
+      return false;
+    }
+  }, [isDemo, getMockFiles, saveMockFiles, fetchFiles]);
+
   useEffect(() => {
     fetchFiles();
 
@@ -437,12 +484,13 @@ export function useFiles(parentId: string | null = null, isDemo: boolean = false
     }
   }, [fetchFiles, isDemo]);
 
-  return { 
-    files, 
-    loading, 
-    refresh: fetchFiles, 
-    uploadFile, 
-    createFolder, 
-    deleteFile 
+  return {
+    files,
+    loading,
+    uploadFile,
+    createFolder,
+    deleteFile,
+    moveFile,
+    fetchFiles
   };
 }

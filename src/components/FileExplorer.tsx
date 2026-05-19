@@ -35,6 +35,7 @@ interface FileExplorerProps {
   loading: boolean;
   onFileClick: (file: FileNode) => void;
   onDelete: (file: FileNode) => void;
+  onMoveClick?: (file: FileNode) => void;
   onUpload: () => void;
   onCreateFolder?: () => void;
   onSearch: (query: string) => void;
@@ -47,6 +48,7 @@ export function FileExplorer({
   loading, 
   onFileClick, 
   onDelete, 
+  onMoveClick,
   onUpload,
   onCreateFolder,
   onSearch,
@@ -220,6 +222,14 @@ export function FileExplorer({
                             <Download className="h-4 w-4" /> Download
                           </DropdownMenuItem>
                         )}
+                        {onMoveClick && (
+                          <DropdownMenuItem className="gap-2" onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveClick(file);
+                          }}>
+                            <ArrowLeft className="h-4 w-4 rotate-180" /> Mover
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem className="gap-2 text-destructive" onClick={(e) => {
                           e.stopPropagation();
                           onDelete(file);
@@ -297,6 +307,14 @@ export function FileExplorer({
                           link.click();
                         }}>
                           <Download className="h-4 w-4" /> Download
+                        </DropdownMenuItem>
+                      )}
+                      {onMoveClick && (
+                        <DropdownMenuItem className="gap-2" onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveClick(file);
+                        }}>
+                          <ArrowLeft className="h-4 w-4 rotate-180" /> Mover
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem className="gap-2 text-destructive" onClick={(e) => {

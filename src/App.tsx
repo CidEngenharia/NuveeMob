@@ -10,6 +10,8 @@ import { useFiles } from '@/src/hooks/useFiles';
 import { useDevices } from '@/src/hooks/useDevices';
 import { FileExplorer } from '@/src/components/FileExplorer';
 import { FileViewerModal } from '@/src/components/FileViewerModal';
+import { MoveFileModal } from '@/src/components/MoveFileModal';
+import { RecentSyncedFiles } from '@/src/components/RecentSyncedFiles';
 import { 
   Cloud, 
   Smartphone, 
@@ -26,7 +28,10 @@ import {
   Eye,
   File,
   Folder,
-  Trash2
+  Trash2,
+  Laptop,
+  Tablet,
+  Monitor
 } from 'lucide-react';
 import { ThemeToggle } from '@/src/components/ThemeToggle';
 import { QRCodeSVG } from 'qrcode.react';
@@ -91,16 +96,27 @@ export default function App() {
     loading: filesLoading, 
     uploadFile, 
     createFolder, 
-    deleteFile 
+    deleteFile,
+    moveFile
   } = useFiles(currentFolderId, (user as any)?.isDemo);
 
   const [activeTab, setActiveTab] = React.useState('files');
   const [isUploading, setIsUploading] = React.useState(false);
   const [splashDone, setSplashDone] = React.useState(false);
   
+  // Estados de Autenticação por E-mail e Senha
+  const [authMode, setAuthMode] = React.useState<'login' | 'signup'>('login');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [authSubmitting, setAuthSubmitting] = React.useState(false);
+  
   // Estados para Visualização de Arquivo
   const [selectedFileForView, setSelectedFileForView] = React.useState<FileNode | null>(null);
   const [isFileViewerOpen, setIsFileViewerOpen] = React.useState(false);
+
+  // Estados para Mover Arquivo
+  const [selectedFileForMove, setSelectedFileForMove] = React.useState<FileNode | null>(null);
+  const [isMoveModalOpen, setIsMoveModalOpen] = React.useState(false);
 
   // Controle do diálogo de nova pasta
   const [isNewFolderOpen, setIsNewFolderOpen] = React.useState(false);
@@ -114,6 +130,135 @@ export default function App() {
   // Modal do QR Code de Dispositivos
   const [isQrModalOpen, setIsQrModalOpen] = React.useState(false);
   const [isConnecting, setIsConnecting] = React.useState(false);
+
+  // Estados para Módulos de Sincronização em Nuvem (Google Drive, OneDrive, Dropbox)
+  const [cloudIntegrations, setCloudIntegrations] = React.useState(() => {
+    const saved = localStorage.getItem('nuveemob_cloud_integrations');
+    return saved ? JSON.parse(saved) : {
+      googleDrive: { connected: false, email: '', sizeUsed: '0 GB', totalSize: '15 GB' },
+      oneDrive: { connected: false, email: '', sizeUsed: '0 GB', totalSize: '5 GB' },
+      dropbox: { connected: false, email: '', sizeUsed: '0 GB', totalSize: '2 GB' }
+    };
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('nuveemob_cloud_integrations', JSON.stringify(cloudIntegrations));
+  }, [cloudIntegrations]);
+
+  const handleConnectCloud = (provider: 'googleDrive' | 'oneDrive' | 'dropbox') => {
+    const providerNames = {
+      googleDrive: 'Google Drive',
+      oneDrive: 'OneDrive',
+      dropbox: 'Dropbox'
+    };
+    const defaultEmails = {
+      googleDrive: 'usuario@gmail.com',
+      oneDrive: 'usuario@outlook.com',
+      dropbox: 'usuario@dropbox.com'
+    };
+    const spaceUsed = {
+      googleDrive: '4.2 GB',
+      oneDrive: '1.8 GB',
+      dropbox: '450 MB'
+    };
+
+    const isConnected = cloudIntegrations[provider].connected;
+
+    if (isConnected) {
+      // Desconectar
+      setCloudIntegrations(prev => ({
+        ...prev,
+        [provider]: { ...prev[provider], connected: false, email: '' }
+      }));
+      toast.success(`${providerNames[provider]} desconectado com sucesso.`);
+      logActivity('device_disconnect', `Integração com ${providerNames[provider]} removida.`);
+    } else {
+      // Conectar
+      const email = window.prompt(`Digite seu e-mail de autenticação para o ${providerNames[provider]}:`, defaultEmails[provider]);
+      if (email === null) return; // Cancelado
+      
+      const finalEmail = email.trim() || defaultEmails[provider];
+      setCloudIntegrations(prev => ({
+        ...prev,
+        [provider]: {
+          ...prev[provider],
+          connected: true,
+          email: finalEmail,
+          sizeUsed: spaceUsed[provider]
+        }
+      }));
+      toast.success(`Conexão com ${providerNames[provider]} realizada com sucesso!`);
+      logActivity('device_connect', `Integração com ${providerNames[provider]} configurada (${finalEmail}).`);
+    }
+  };
+
+  const handleSyncCloud = async (provider: 'googleDrive' | 'oneDrive' | 'dropbox') => {
+    const providerNames = {
+      googleDrive: 'Google Drive',
+      oneDrive: 'OneDrive',
+      dropbox: 'Dropbox'
+    };
+    
+    const syncToast = toast.loading(`Sincronizando arquivos do ${providerNames[provider]}...`);
+    
+    setTimeout(async () => {
+      // Simula a sincronização adicionando um arquivo do serviço na lista
+      const demoFiles = {
+        googleDrive: { name: 'Apresentacao_Nuveemob_GDrive.pptx', size: 1024 * 1024 * 4.5, mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
+        oneDrive: { name: 'Relatorio_Financeiro_OneDrive.xlsx', size: 1024 * 1024 * 1.2, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+        dropbox: { name: 'Backup_Config_Dropbox.zip', size: 1024 * 1024 * 8.7, mimeType: 'application/zip' }
+      };
+
+      const fileData = demoFiles[provider];
+      
+      // Se estiver no modo demo ou logado no supabase, adicionamos o arquivo no banco
+      if (!(user as any)?.isDemo) {
+        try {
+          const { error } = await supabase.from('files').insert([
+            { 
+              name: fileData.name, 
+              type: 'file', 
+              size: fileData.size, 
+              mimeType: fileData.mimeType, 
+              userId: user.id,
+              category: 'document'
+            }
+          ]);
+          if (error) console.error('Erro ao inserir arquivo da nuvem no Supabase:', error);
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        // Mock local
+        const mockKey = `nuveemob_mock_files_${user.id}`;
+        const saved = localStorage.getItem(mockKey);
+        const allMocks = saved ? JSON.parse(saved) : [];
+        
+        const newFile = {
+          id: 'cloud-' + Math.random().toString(36).substring(2, 9),
+          name: fileData.name,
+          type: 'file',
+          size: fileData.size,
+          mimeType: fileData.mimeType,
+          parentId: null,
+          userId: user.id,
+          category: 'document',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        allMocks.push(newFile);
+        localStorage.setItem(mockKey, JSON.stringify(allMocks));
+        
+        // Disparar refresh de arquivos
+        const refreshEvent = new CustomEvent('nuveemob_refresh_files');
+        window.dispatchEvent(refreshEvent);
+      }
+
+      toast.success(`Arquivos do ${providerNames[provider]} sincronizados com sucesso!`, { id: syncToast });
+      logActivity('upload', `Sincronizados novos arquivos do ${providerNames[provider]}.`);
+    }, 1500);
+  };
 
   // Estados para Atividades
   const [activities, setActivities] = React.useState<ActivityLog[]>(() => {
@@ -188,11 +333,49 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
+    setAuthSubmitting(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
-    if (error) toast.error(error.message);
+    setAuthSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Login realizado com sucesso!");
+    }
+  };
+
+  const handleEmailSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
+    setAuthSubmitting(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: {
+          full_name: email.split('@')[0],
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
+        }
+      }
+    });
+    setAuthSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Cadastro realizado com sucesso! Verifique seu e-mail para confirmação.");
+    }
   };
 
   const handleLogout = async () => {
@@ -381,45 +564,160 @@ export default function App() {
   }
 
   if (!user) {
+    const floatingDevices = [
+      { icon: Smartphone, x: "12%", top: "18%", size: 26, delay: 0, duration: 9 },
+      { icon: Laptop, x: "78%", top: "14%", size: 34, delay: 1.2, duration: 11 },
+      { icon: Tablet, x: "14%", top: "72%", size: 30, delay: 2.5, duration: 10 },
+      { icon: Monitor, x: "76%", top: "68%", size: 38, delay: 0.5, duration: 12 },
+      { icon: Zap, x: "46%", top: "8%", size: 22, delay: 1.8, duration: 8 },
+      { icon: Cloud, x: "84%", top: "42%", size: 30, delay: 3.2, duration: 9.5 }
+    ];
+
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-6">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+        {/* Dispositivos flutuando no background de forma discreta */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px]" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px]" />
+          
+          {floatingDevices.map((device, index) => {
+            const Icon = device.icon;
+            return (
+              <motion.div
+                key={index}
+                className="absolute text-purple-500/15 dark:text-purple-400/10"
+                style={{ left: device.x, top: device.top }}
+                animate={{
+                  y: [0, -15, 0],
+                  x: [0, 8, 0],
+                  rotate: [0, 8, -8, 0],
+                }}
+                transition={{
+                  duration: device.duration,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: device.delay,
+                }}
+              >
+                <Icon style={{ width: device.size, height: device.size }} />
+              </motion.div>
+            );
+          })}
         </div>
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full text-center space-y-8 relative z-10"
+          className="max-w-md w-full text-center space-y-6 relative z-10"
         >
+          {/* Ícone de Nuvem lilás pulsante */}
           <div className="flex justify-center">
-            <div className="p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl shadow-blue-500/20">
-              <Cloud className="h-12 w-12 text-white" />
-            </div>
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.08, 1],
+                boxShadow: [
+                  "0 0 0 0 rgba(168, 85, 247, 0.4)",
+                  "0 0 0 15px rgba(168, 85, 247, 0)",
+                  "0 0 0 0 rgba(168, 85, 247, 0)"
+                ]
+              }}
+              transition={{ 
+                duration: 2.2, 
+                repeat: Infinity, 
+                ease: "easeInOut" 
+              }}
+              className="p-5 bg-purple-500/10 border border-purple-500/20 rounded-full shadow-lg shadow-purple-500/5"
+            >
+              <Cloud className="h-12 w-12 text-purple-400" />
+            </motion.div>
           </div>
+          
           <div className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tighter text-foreground">NuveeMob</h1>
-            <p className="text-muted-foreground">Sua ponte inteligente entre dispositivos. Armazene, organize e busque com o poder da IA.</p>
+            <p className="text-muted-foreground text-sm">Faça o login para ter acesso aos seus dispositvos instantaneamente.</p>
           </div>
-          <div className="flex flex-col gap-3">
-            <Button 
-              size="lg" 
-              className="w-full h-14 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-all font-semibold gap-2 text-white"
-              onClick={handleLogin}
+
+          {/* Formulário de Login / Cadastro */}
+          <form 
+            onSubmit={authMode === 'login' ? handleEmailLogin : handleEmailSignup} 
+            className="space-y-4 text-left bg-card border border-border p-6 rounded-2xl shadow-xl backdrop-blur-md"
+          >
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">E-mail</label>
+              <Input
+                type="email"
+                placeholder="nome@exemplo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="rounded-xl h-11 border-border bg-background focus-visible:ring-purple-500/20 focus-visible:border-purple-500"
+                required
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">Senha</label>
+              <Input
+                type="password"
+                placeholder="Sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="rounded-xl h-11 border-border bg-background focus-visible:ring-purple-500/20 focus-visible:border-purple-500"
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              size="lg"
+              disabled={authSubmitting}
+              className="w-full h-12 rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition-all font-semibold mt-2 shadow-lg shadow-purple-600/20"
             >
-              Começar Agora
+              {authSubmitting 
+                ? "Processando..." 
+                : authMode === 'login' ? "Entrar" : "Criar Conta"
+              }
             </Button>
-            <Button 
-              variant="outline"
-              size="lg" 
-              className="w-full h-14 rounded-full border-border text-foreground hover:bg-accent transition-all font-semibold gap-2"
-              onClick={handleDemoLogin}
-            >
-              Simular com Conta Demo
-            </Button>
-          </div>
-          <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+
+            <div className="flex flex-col gap-2 pt-2 text-center text-xs text-muted-foreground">
+              {authMode === 'login' ? (
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('signup')}
+                  className="text-purple-500 hover:text-purple-600 hover:underline transition-colors font-medium"
+                >
+                  Não tem uma conta? Cadastre-se
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('login')}
+                  className="text-purple-500 hover:text-purple-600 hover:underline transition-colors font-medium"
+                >
+                  Já possui conta? Faça o login
+                </button>
+              )}
+              
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Ou experimente</span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleDemoLogin}
+                className="h-10 rounded-xl border border-dashed border-border hover:bg-accent text-foreground transition-all"
+              >
+                Simular com Conta Demo
+              </Button>
+            </div>
+          </form>
+
+          <div className="flex justify-center gap-4 text-[10px] text-muted-foreground pt-2">
              <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Seguro</span>
              <span className="flex items-center gap-1"><Smartphone className="h-3 w-3" /> Mobile-First</span>
              <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> Real-time</span>
@@ -541,6 +839,19 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Seção de Arquivos Sincronizados Recentemente (apenas na raiz e se não estiver filtrado por IA) */}
+                {!currentFolderId && !aiFilterActive && (
+                  <RecentSyncedFiles
+                    userId={user?.id || ''}
+                    isDemo={(user as any)?.isDemo}
+                    onFileClick={handleFileClick}
+                    onMoveClick={(file) => {
+                      setSelectedFileForMove(file);
+                      setIsMoveModalOpen(true);
+                    }}
+                  />
+                )}
+
                 <FileExplorer 
                   files={displayFiles} 
                   loading={filesLoading} 
@@ -551,6 +862,10 @@ export default function App() {
                   onSearch={handleAiSearch}
                   parentId={currentFolderId}
                   onBack={handleBack}
+                  onMoveClick={(file) => {
+                    setSelectedFileForMove(file);
+                    setIsMoveModalOpen(true);
+                  }}
                 />
               </motion.div>
             )}
@@ -693,6 +1008,196 @@ export default function App() {
                       onDisconnect={() => handleDisconnectDevice(device.id, device.name)}
                     />
                   ))}
+                </div>
+
+                {/* Seção de Integrações de Nuvem (Google Drive, OneDrive, Dropbox) */}
+                <div className="pt-6 border-t border-white/5">
+                  <div className="mb-4">
+                    <h4 className="text-lg font-bold text-foreground">Módulos de Sincronização em Nuvem</h4>
+                    <p className="text-xs text-muted-foreground">Conecte seus provedores de armazenamento externos para importar e sincronizar arquivos automaticamente.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Google Drive Card */}
+                    <Card className={`p-5 rounded-2xl relative overflow-hidden backdrop-blur-md transition-all border border-white/5 flex flex-col justify-between h-48 ${
+                      cloudIntegrations.googleDrive.connected ? 'bg-blue-600/10' : 'bg-accent/40'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-yellow-500/10 rounded-xl">
+                            <Cloud className="h-6 w-6 text-yellow-500" />
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-sm">Google Drive</h5>
+                            {cloudIntegrations.googleDrive.connected ? (
+                              <span className="text-[10px] text-green-400 font-medium">Sincronizado</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Desconectado</span>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant={cloudIntegrations.googleDrive.connected ? 'default' : 'secondary'} className={
+                          cloudIntegrations.googleDrive.connected 
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                            : 'bg-white/5 text-muted-foreground'
+                        }>
+                          {cloudIntegrations.googleDrive.connected ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </div>
+
+                      {cloudIntegrations.googleDrive.connected && (
+                        <div className="my-2 space-y-1">
+                          <p className="text-xs text-muted-foreground truncate">{cloudIntegrations.googleDrive.email}</p>
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Espaço utilizado</span>
+                            <span>{cloudIntegrations.googleDrive.sizeUsed} de {cloudIntegrations.googleDrive.totalSize}</span>
+                          </div>
+                          <Progress value={28} className="h-1 bg-white/5" />
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-4 pt-2 border-t border-white/5">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleConnectCloud('googleDrive')}
+                          className="flex-1 text-xs rounded-xl h-8 border border-white/10 hover:bg-white/5 text-foreground"
+                        >
+                          {cloudIntegrations.googleDrive.connected ? 'Desconectar' : 'Conectar'}
+                        </Button>
+                        {cloudIntegrations.googleDrive.connected && (
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            onClick={() => handleSyncCloud('googleDrive')}
+                            className="flex-1 text-xs rounded-xl h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                          >
+                            Sincronizar
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+
+                    {/* OneDrive Card */}
+                    <Card className={`p-5 rounded-2xl relative overflow-hidden backdrop-blur-md transition-all border border-white/5 flex flex-col justify-between h-48 ${
+                      cloudIntegrations.oneDrive.connected ? 'bg-blue-600/10' : 'bg-accent/40'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-blue-500/10 rounded-xl">
+                            <Cloud className="h-6 w-6 text-blue-400" />
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-sm">OneDrive</h5>
+                            {cloudIntegrations.oneDrive.connected ? (
+                              <span className="text-[10px] text-green-400 font-medium">Sincronizado</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Desconectado</span>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant={cloudIntegrations.oneDrive.connected ? 'default' : 'secondary'} className={
+                          cloudIntegrations.oneDrive.connected 
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                            : 'bg-white/5 text-muted-foreground'
+                        }>
+                          {cloudIntegrations.oneDrive.connected ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </div>
+
+                      {cloudIntegrations.oneDrive.connected && (
+                        <div className="my-2 space-y-1">
+                          <p className="text-xs text-muted-foreground truncate">{cloudIntegrations.oneDrive.email}</p>
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Espaço utilizado</span>
+                            <span>{cloudIntegrations.oneDrive.sizeUsed} de {cloudIntegrations.oneDrive.totalSize}</span>
+                          </div>
+                          <Progress value={36} className="h-1 bg-white/5" />
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-4 pt-2 border-t border-white/5">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleConnectCloud('oneDrive')}
+                          className="flex-1 text-xs rounded-xl h-8 border border-white/10 hover:bg-white/5 text-foreground"
+                        >
+                          {cloudIntegrations.oneDrive.connected ? 'Desconectar' : 'Conectar'}
+                        </Button>
+                        {cloudIntegrations.oneDrive.connected && (
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            onClick={() => handleSyncCloud('oneDrive')}
+                            className="flex-1 text-xs rounded-xl h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                          >
+                            Sincronizar
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+
+                    {/* Dropbox Card */}
+                    <Card className={`p-5 rounded-2xl relative overflow-hidden backdrop-blur-md transition-all border border-white/5 flex flex-col justify-between h-48 ${
+                      cloudIntegrations.dropbox.connected ? 'bg-blue-600/10' : 'bg-accent/40'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-indigo-500/10 rounded-xl">
+                            <Cloud className="h-6 w-6 text-indigo-400" />
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-sm">Dropbox</h5>
+                            {cloudIntegrations.dropbox.connected ? (
+                              <span className="text-[10px] text-green-400 font-medium">Sincronizado</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Desconectado</span>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant={cloudIntegrations.dropbox.connected ? 'default' : 'secondary'} className={
+                          cloudIntegrations.dropbox.connected 
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                            : 'bg-white/5 text-muted-foreground'
+                        }>
+                          {cloudIntegrations.dropbox.connected ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </div>
+
+                      {cloudIntegrations.dropbox.connected && (
+                        <div className="my-2 space-y-1">
+                          <p className="text-xs text-muted-foreground truncate">{cloudIntegrations.dropbox.email}</p>
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Espaço utilizado</span>
+                            <span>{cloudIntegrations.dropbox.sizeUsed} de {cloudIntegrations.dropbox.totalSize}</span>
+                          </div>
+                          <Progress value={22} className="h-1 bg-white/5" />
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-4 pt-2 border-t border-white/5">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleConnectCloud('dropbox')}
+                          className="flex-1 text-xs rounded-xl h-8 border border-white/10 hover:bg-white/5 text-foreground"
+                        >
+                          {cloudIntegrations.dropbox.connected ? 'Desconectar' : 'Conectar'}
+                        </Button>
+                        {cloudIntegrations.dropbox.connected && (
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            onClick={() => handleSyncCloud('dropbox')}
+                            className="flex-1 text-xs rounded-xl h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                          >
+                            Sincronizar
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -862,6 +1367,18 @@ export default function App() {
           setIsFileViewerOpen(false);
           setTimeout(() => setSelectedFileForView(null), 300); // Limpa após animação
         }} 
+      />
+
+      {/* Modal para Mover Arquivos */}
+      <MoveFileModal
+        isOpen={isMoveModalOpen}
+        onClose={() => {
+          setIsMoveModalOpen(false);
+          setSelectedFileForMove(null);
+        }}
+        fileToMove={selectedFileForMove}
+        onMove={moveFile}
+        userId={user?.id || ''}
       />
     </div>
   );
