@@ -114,16 +114,16 @@ export function SplashScreen() {
           top: 24, 
           left: 24, 
           zIndex: 50,
-          opacity: 0.9
+          opacity: 0.95
         }}
       >
         <img 
           src="/nuvem_mob.png" 
           alt="NuveeMob Logo" 
           style={{ 
-            height: 28, 
+            height: 48, 
             objectFit: 'contain',
-            filter: 'drop-shadow(0 0 6px rgba(168,85,247,0.2))'
+            filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.3))'
           }} 
         />
       </div>
@@ -142,14 +142,15 @@ export function SplashScreen() {
         {/* Texto da Esquerda / Superior (Lilás) */}
         <div 
           style={{ 
-            width: isDesktop ? 260 : 'auto', 
+            width: isDesktop ? 300 : 'auto', 
             textAlign: isDesktop ? 'right' : 'center',
             color: '#c084fc', // Lilás premium
-            fontSize: isDesktop ? '1.25rem' : '1.15rem', 
+            fontSize: isDesktop ? '1.1rem' : '1.05rem', 
             fontWeight: 500, 
             letterSpacing: '0.04em',
             margin: 0,
-            minHeight: '1.75rem'
+            minHeight: '1.75rem',
+            whiteSpace: isDesktop ? 'nowrap' : 'normal'
           }}
         >
           <Typewriter text="Conectar seus dispositivos," speed={60} delay={300} />
@@ -362,14 +363,15 @@ export function SplashScreen() {
         {isDesktop && (
           <div 
             style={{ 
-              width: 260, 
+              width: 300, 
               textAlign: 'left',
               color: '#c084fc', // Lilás premium
-              fontSize: '1.25rem', 
+              fontSize: '1.1rem', 
               fontWeight: 500, 
               letterSpacing: '0.04em',
               margin: 0,
-              minHeight: '1.75rem'
+              minHeight: '1.75rem',
+              whiteSpace: 'nowrap'
             }}
           >
             <Typewriter text="agora ficou mais fácil." speed={60} delay={2200} />
