@@ -2,6 +2,59 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Cloud, Smartphone, Monitor } from 'lucide-react';
 
+function Typewriter({ text, speed = 80, delay = 0 }: { text: string; speed?: number; delay?: number }) {
+  const [displayedText, setDisplayedText] = React.useState('');
+
+  React.useEffect(() => {
+    let timeoutId: any;
+    let index = 0;
+
+    const startTyping = () => {
+      const interval = setInterval(() => {
+        if (index < text.length) {
+          setDisplayedText(text.slice(0, index + 1));
+          index++;
+        } else {
+          clearInterval(interval);
+        }
+      }, speed);
+      return interval;
+    };
+
+    let intervalId: any;
+    if (delay > 0) {
+      timeoutId = setTimeout(() => {
+        intervalId = startTyping();
+      }, delay);
+    } else {
+      intervalId = startTyping();
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
+  }, [text, speed, delay]);
+
+  return (
+    <span>
+      {displayedText}
+      <motion.span
+        animate={{ opacity: [1, 0, 1] }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: "steps(2)" }}
+        style={{ 
+          display: 'inline-block', 
+          width: '2px', 
+          height: '1em', 
+          backgroundColor: 'currentColor', 
+          marginLeft: '2px', 
+          verticalAlign: 'middle' 
+        }}
+      />
+    </span>
+  );
+}
+
 const ORBIT_R = 148;      // raio do anel orbital
 const ICON_W  = 54;       // largura do ícone
 const ICON_H  = 74;       // ícone + label
@@ -25,7 +78,7 @@ export function SplashScreen() {
         background: 'radial-gradient(ellipse at center, #0d1b3e 0%, #060d1f 60%, #020509 100%)',
         position: 'relative',
         overflow: 'hidden',
-        gap: 36,
+        gap: 28,
       }}
     >
       {/* Glow difuso centralizado */}
@@ -41,6 +94,33 @@ export function SplashScreen() {
           pointerEvents: 'none',
         }}
       />
+
+      {/* Logo no topo da janela */}
+      <div 
+        style={{ 
+          position: 'absolute', 
+          top: 36, 
+          left: '50%', 
+          transform: 'translateX(-50%)', 
+          zIndex: 50,
+          opacity: 0.85
+        }}
+      >
+        <img 
+          src="/nuvem_mob.png" 
+          alt="NuveeMob Logo" 
+          style={{ 
+            height: 38, 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 0 8px rgba(99,102,241,0.25))'
+          }} 
+        />
+      </div>
+
+      {/* Descrição antes do círculo */}
+      <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: '#e0f2fe', letterSpacing: '0.04em', margin: 0, minHeight: '1.75rem', textAlign: 'center', zIndex: 10 }}>
+        <Typewriter text="Conectar seus dispositivos," speed={60} delay={300} />
+      </h2>
 
       {/* ======= COMPOSIÇÃO ORBITAL ======= */}
       {/*
@@ -246,20 +326,25 @@ export function SplashScreen() {
       </div>
 
       {/* ======= TEXTOS — centralizados abaixo da animação ======= */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, zIndex: 10 }}>
+        <p style={{ fontSize: '1.05rem', color: 'rgba(167,139,250,0.95)', letterSpacing: '0.04em', margin: 0, minHeight: '1.5rem', textAlign: 'center' }}>
+          <Typewriter text="agora ficou mais fácil." speed={60} delay={2200} />
+        </p>
+
         <motion.p
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ fontSize: 13, color: TEXT_COLOR, letterSpacing: '0.14em', margin: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ fontSize: 11, color: TEXT_COLOR, letterSpacing: '0.12em', margin: 0, marginTop: 12 }}
         >
           iniciando nuveemob...
         </motion.p>
 
         <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9, duration: 0.7 }}
-          style={{ fontSize: 11, color: TEXT_COLOR, letterSpacing: '0.06em', margin: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.4 }}
+          transition={{ delay: 3.5, duration: 0.8 }}
+          style={{ fontSize: 10, color: TEXT_COLOR, letterSpacing: '0.05em', margin: 0 }}
         >
           Developer — CidEngenharia — Sidney Sales
         </motion.p>

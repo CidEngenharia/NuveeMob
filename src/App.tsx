@@ -610,30 +610,29 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full text-center space-y-6 relative z-10"
         >
-          {/* Ícone de Nuvem lilás pulsante */}
-          <div className="flex justify-center">
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.08, 1],
-                boxShadow: [
-                  "0 0 0 0 rgba(168, 85, 247, 0.4)",
-                  "0 0 0 15px rgba(168, 85, 247, 0)",
-                  "0 0 0 0 rgba(168, 85, 247, 0)"
-                ]
-              }}
-              transition={{ 
-                duration: 2.2, 
-                repeat: Infinity, 
-                ease: "easeInOut" 
-              }}
-              className="p-5 bg-purple-500/10 border border-purple-500/20 rounded-full shadow-lg shadow-purple-500/5"
-            >
-              <Cloud className="h-12 w-12 text-purple-400" />
-            </motion.div>
-          </div>
-          
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tighter text-foreground">NuveeMob</h1>
+          {/* Layout lado a lado da logo compacta com icone e texto */}
+          <div className="flex flex-col items-center space-y-2">
+            <div className="flex items-center justify-center gap-3">
+              <motion.div 
+                animate={{ 
+                  scale: [1, 1.08, 1],
+                  boxShadow: [
+                    "0 0 0 0 rgba(168, 85, 247, 0.4)",
+                    "0 0 0 8px rgba(168, 85, 247, 0)",
+                    "0 0 0 0 rgba(168, 85, 247, 0)"
+                  ]
+                }}
+                transition={{ 
+                  duration: 2.2, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+                className="p-2.5 bg-purple-500/10 border border-purple-500/20 rounded-full shadow-md shadow-purple-500/5"
+              >
+                <Cloud className="h-6 w-6 text-purple-400" />
+              </motion.div>
+              <h1 className="text-4xl font-bold tracking-tighter text-foreground">NuveeMob</h1>
+            </div>
             <p className="text-muted-foreground text-sm">Faça o login para ter acesso aos seus dispositvos instantaneamente.</p>
           </div>
 
