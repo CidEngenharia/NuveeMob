@@ -107,12 +107,13 @@ export function SplashScreen() {
         }}
       />
 
-      {/* Logo no topo da janela (canto superior esquerdo) */}
+      {/* Logo acima do circulo animado, centralizada */}
       <div 
         style={{ 
           position: 'absolute', 
-          top: 24, 
-          left: 24, 
+          top: isDesktop ? 'calc(50% - 220px)' : '36px', 
+          left: '50%', 
+          transform: 'translateX(-50%)', 
           zIndex: 50,
           opacity: 0.95
         }}
